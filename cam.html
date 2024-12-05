@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detecção de Movimento com Câmera</title>
+    <style>
+        body {
+            text-align: center;
+        }
+        video {
+            width: 80%;
+            margin-top: 20px;
+        }
+        #status {
+            font-size: 20px;
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Detecção de Movimento com a Câmera</h1>
+    <video id="video" autoplay></video>
+    <p id="status">Aguardando detecção...</p>
+
+    <script>
+        // Obtém o elemento do vídeo e o status
+        const video = document.getElementById('video');
+        const status = document.getElementById('status');
+
+        // Inicia a captura de vídeo da câmera
+        async function startVideo() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+            } catch (err) {
+                console.error("Erro ao acessar a câmera: ", err);
+                alert("Não foi possível acessar a câmera.");
+            }
+        }
+
+        // Função para calcular a diferença entre os quadros
+        function calculateDifference(frame1, frame2) {
+            let totalDiff = 0;
+
+            for (let i = 0; i < frame1.data.length; i += 4) {
+                // Calcula a intensidade luminosa de cada pixel (luminância)
+                const r1 = frame1.data[i];
+                const g1 = frame1.data[i + 1];
+                const b1 = frame1.data[i + 2];
+
+                const r2 = frame2.data[i];
+                const g2 = frame2.data[i + 1];
+                const b2 = frame2.data[i + 2];
+
+                // Cálculo simples de luminância (conversão RGB para escala de cinza)
+                const luminance1 = 0.299 * r1 + 0.587 * g1 + 0.114 * b1;
+                const luminance2 = 0.299 * r2 + 0.587 * g2 + 0.114 * b2;
+
+                // Soma a diferença absoluta entre os dois quadros
+                totalDiff += Math.abs(luminance1 - luminance2);
+            }
+
+            return totalDiff;
+        }
+
+        // Função de detecção de movimento
+        let previousFrame = null;
+
+        function detectMotion() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const width = video.videoWidth;
+            const height = video.videoHeight;
+            canvas.width = width;
+            canvas.height = height;
+
+            ctx.drawImage(video, 0, 0, width, height);
+            const currentFrame = ctx.getImageData(0, 0, width, height);
+
+            if (previousFrame) {
+                const diffThreshold = 1500000; // Ajuste a sensibilidade aqui
+                const frameDiff = calculateDifference(previousFrame, currentFrame);
+
+                if (frameDiff > diffThreshold) {
+                    status.textContent = 'Movimento detectado!';
+                    status.style.color = 'green';
+                } else {
+                    status.textContent = 'Aguardando detecção...';
+                    status.style.color = 'red';
+                }
+            }
+
+            // Armazena o quadro atual para comparação no próximo ciclo
+            previousFrame = currentFrame;
+        }
+
+        // Inicia a captura de vídeo e começa a detecção de movimento
+        startVideo().then(() => {
+            setInterval(detectMotion, 100); // Detecta movimento a cada 100ms
+        });
+    </script>
+</body>
+</html>

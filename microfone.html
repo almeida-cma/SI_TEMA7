@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detecção de Som com Microfone</title>
+    <style>
+        body {
+            text-align: center;
+            margin-top: 50px;
+        }
+        #status {
+            font-size: 24px;
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Detecção de Som com o Microfone</h1>
+    <p id="status">Aguardando som...</p>
+
+    <script>
+        const statusText = document.getElementById('status');
+
+        // Inicia a captura de áudio do microfone
+        async function startAudioDetection() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const analyser = audioContext.createAnalyser();
+                const microphone = audioContext.createMediaStreamSource(stream);
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+                analyser.fftSize = 256; // Tamanho da FFT (determina a precisão)
+                microphone.connect(analyser);
+
+                function detectSound() {
+                    analyser.getByteFrequencyData(dataArray);
+
+                    let maxVolume = 0;
+                    for (let i = 0; i < dataArray.length; i++) {
+                        if (dataArray[i] > maxVolume) {
+                            maxVolume = dataArray[i];
+                        }
+                    }
+
+                    // Define o limite para detecção de som
+                    const threshold = 100;
+
+                    if (maxVolume > threshold) {
+                        statusText.textContent = "Som detectado!";
+                        statusText.style.color = "green";
+                    } else {
+                        statusText.textContent = "Aguardando som...";
+                        statusText.style.color = "red";
+                    }
+
+                    requestAnimationFrame(detectSound); // Continua a detecção
+                }
+
+                detectSound(); // Inicia a detecção
+            } catch (err) {
+                console.error("Erro ao acessar o microfone: ", err);
+                alert("Não foi possível acessar o microfone.");
+            }
+        }
+
+        startAudioDetection();
+    </script>
+</body>
+</html>
